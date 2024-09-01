@@ -1,5 +1,6 @@
 import AudioEngine from "./audioEngine.js";
 
+
 const audioEngine = new AudioEngine(true);
 
 /*====================================SOUND STUFF====================================*/
@@ -30,7 +31,8 @@ const ground = Bodies.rectangle(400, 610, 810, 60, {isStatic: true});
 
 const tombolaShapeXY = [400,200]
 const tombolaSides = 5;
-const tombolaRadius = 300;
+const tombolaInnerRadius = 300;
+const tombolaOuterRadius = 400;
 
 function createPolygon(x, y, sides, outerRadius, innerRadius) {
     const angle = (2 * Math.PI) / sides;
@@ -44,45 +46,35 @@ function createPolygon(x, y, sides, outerRadius, innerRadius) {
         outerVertices.push({ x: outerX, y: outerY });
     }
 
-    // Generate inner vertices
-    for (let i = 0; i < sides; i++) {
-        const innerX = x + innerRadius * Math.cos((i + 0.5) * angle); // Offset for inner vertices
-        const innerY = y + innerRadius * Math.sin((i + 0.5) * angle);
+    // Generate inner vertices (in reverse order)
+    for (let i = sides - 1; i >= 0; i--) {
+        const innerX = x + innerRadius * Math.cos(i * angle);
+        const innerY = y + innerRadius * Math.sin(i * angle);
         innerVertices.push({ x: innerX, y: innerY });
     }
 
-    // Create outer and inner convex bodies
-    const outerPolygon = Bodies.fromVertices(x, y, [outerVertices], {
-        isStatic: true,
-        render: {
-            fillStyle: 'blue',
-        },
+    // Combine outer and inner vertices to create a hollow shape
+    const hollowVertices = outerVertices.concat(innerVertices);
+
+    const polygon = Matter.Bodies.fromVertices(x, y, [hollowVertices], {
+        mass: 50,
+        frictionAir: 0.03,
+        restitution: 0.9,
     });
 
-    const innerPolygon = Bodies.fromVertices(x, y, [innerVertices], {
-        isStatic: true,
-        render: {
-            fillStyle: 'white', // Or transparent if you prefer
-        },
-    });
-
-    // Combine shapes into a compound body
-    const hollowBody = Composite.create();
-    Composite.add(hollowBody, [outerPolygon, innerPolygon]);
-
-    return hollowBody;
+    return polygon;
 }
 
 
-const tombola = createPolygon(tombolaShapeXY[0], tombolaShapeXY[1], tombolaSides, tombolaRadius);
+const tombola = createPolygon(tombolaShapeXY[0], tombolaShapeXY[1], tombolaSides, tombolaOuterRadius, tombolaInnerRadius);
 
 // Create a constraint to keep the pentagon anchored at its center
-const constraint = Matter.Constraint.create({
+/*const constraint = Matter.Constraint.create({
     pointA: { x: tombolaShapeXY[0], y: tombolaShapeXY[1] }, // Central axis
     bodyB: tombola,
     pointB: { x: 0, y: 0 }, // Offset within the pentagon (center)
     stiffness: 1 // No flexibility
-});
+});*/
 
 // Function to rotate the pentagon
 function rotateBody(body) {
@@ -91,8 +83,8 @@ function rotateBody(body) {
 // Add the ground to the world
 Composite.add(engine.world, [ground]);
 // Add the pentagon and the constraint to the world
-Composite.add(engine.world, [tombola, constraint]);
-
+/*Composite.add(engine.world, [tombola, constraint]);*/
+Composite.add(engine.world, [tombola]);
 
 // Run the renderer
 Render.run(render);
@@ -105,9 +97,9 @@ Runner.run(runner, engine);
 
 console.log(tombola);
 
+/*
 setInterval(rotateBody, 100, tombola);
-
-
+*/
 
 const balls = []; // Array to store all balls
 
