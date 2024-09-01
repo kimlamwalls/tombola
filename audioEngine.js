@@ -11,7 +11,7 @@ export default class AudioEngine {
         this.masterVolume = null;
         this.vcaVolume = null;
         this.convolver = null;
-        this.oscillator = null;
+        this.oscillators = []; // Array to store created oscillators
         this.lowPassFilter = null;
 
         this.oscillatorRunning = false;
@@ -29,7 +29,6 @@ export default class AudioEngine {
         this.bufferLength = null; // buffer length initialised in initVisualisations
         this.dataArray = null; // data array initialised in initVisualisations
         this.oscilloscopeFPS = 60; // Frames per second for oscilloscope
-
     }
 
     async loadImpulseResponse(url) {
@@ -49,11 +48,10 @@ export default class AudioEngine {
     }
 
     initAudioEngine(){
-        this.audioContext = new (window.AudioContext || window.webkitAudioContext)(); // Create an audio context
-        this.masterVolume = this.audioContext.createGain(); // Create a master volume node
-        //create vca volume node
+        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        this.masterVolume = this.audioContext.createGain();
         this.vcaVolume = this.audioContext.createGain();
-        this.masterVolume.connect(this.audioContext.destination); // Connect master volume to the audio context's destination
+        this.masterVolume.connect(this.audioContext.destination);
         this.masterVolume.gain.value = 0.3;
         this.convolver = this.audioContext.createConvolver();
         this.lowPassFilter = this.audioContext.createBiquadFilter();
@@ -62,30 +60,82 @@ export default class AudioEngine {
         this.lowPassFilter.Q.value = 1;
     }
 
-    startOscillator() {
-        if (this.oscillator) {
-            this.oscillator.stop(0);
-            this.oscillator.disconnect();
-        }
-        this.oscillator = this.audioContext.createOscillator();
-        this.oscillator.frequency.setValueAtTime(220, this.audioContext.currentTime);
-        this.oscillator.connect(this.vcaVolume);
-        this.vcaVolume.connect(this.lowPassFilter);
+    createOscillator({
+                         frequency = 220,
+                         waveform = "sine",
+                         attack = 0.1,
+                         decay = 0.2,
+                         sustain = 0.7,
+                         release = 0.3
+                     } = {}) {
+        const oscillator = this.audioContext.createOscillator();
+        const vca = this.audioContext.createGain(); // Unique VCA for this oscillator
+        const now = this.audioContext.currentTime;
+
+        oscillator.type = waveform;
+        oscillator.frequency.setValueAtTime(frequency, now);
+
+        // Start the gain at 0 (silence)
+        vca.gain.setValueAtTime(0, now);
+
+        // Connect the oscillator through its own VCA, then through the rest of the audio chain
+        oscillator.connect(vca);
+        vca.connect(this.lowPassFilter);
         this.lowPassFilter.connect(this.convolver);
-        this.setWaveform("sawtooth");
-        this.oscillator.start(0);
-        this.oscillatorRunning = true;
-        if (this.debug) console.log('Oscillator started'); // Debug log
-        // Ensure the audio context is not suspended
+        this.convolver.connect(this.masterVolume);
+
+        // Define the custom oscillator with an envelope
+        const customOscillator = {
+            oscillatorNode: oscillator,
+            vcaNode: vca,
+            attack,
+            decay,
+            sustain,
+            release,
+            start: (when = 0) => {
+                oscillator.start(when);
+            },
+            stop: (when = 0) => {
+                oscillator.stop(when + release);
+            },
+            setFrequency: (freq) => oscillator.frequency.setValueAtTime(freq, this.audioContext.currentTime),
+            setGain: (value) => vca.gain.setValueAtTime(value, this.audioContext.currentTime),
+            setWaveform: (waveform) => oscillator.type = waveform,
+            triggerAttackRelease: () => {
+                const now = this.audioContext.currentTime;
+                vca.gain.cancelScheduledValues(now); // Clear any existing scheduled values
+                vca.gain.setValueAtTime(0, now); // Start at 0
+                vca.gain.linearRampToValueAtTime(1, now + 1); // Ramp up to sustain
+                console.log(vca.gain.value);
+                console.log(vca.gain.valueAtTime(now));
+                console.log(vca.gain.valueAtTime(now + this.attack));
+        /*        vca.gain.linearRampToValueAtTime(1, now + this.attack); // Ramp up to 1
+                vca.gain.linearRampToValueAtTime(0, now + this.attack + this.release); // Ramp down to 0*/
+            },
+        };
+
+        this.oscillators.push(customOscillator);
+
+        return customOscillator;
     }
 
-    stopOscillator() {
-        if (this.oscillator) {
-            this.oscillator.stop(0);
-            this.oscillator.disconnect();
-            this.oscillatorRunning = false;
-            if (this.debug) console.log('Oscillator stopped'); // Debug log
-        }
+    stopAllOscillators() {
+        this.oscillators.forEach(osc => osc.stop());
+        this.oscillators = [];
+    }
+
+    // Example method to create and start an oscillator
+    startOscillator({ frequency, waveform }) {
+        const osc = this.createOscillator({ frequency, waveform });
+        osc.start(0);
+        if (this.debug) console.log(`Started oscillator with frequency ${frequency} and waveform ${waveform}`);
+        return osc;
+    }
+
+    stopOscillator(oscillator) {
+        oscillator.stop(0);
+        this.oscillators = this.oscillators.filter(osc => osc !== oscillator);
+        if (this.debug) console.log('Oscillator stopped');
     }
 
     changePitch(value) {

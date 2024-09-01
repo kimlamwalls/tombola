@@ -6,8 +6,6 @@ const audioEngine = new AudioEngine(true);
 
 
 
-
-
 /*=============================TOMBOLA STUFF===============================*/
 // Module aliases
 const Engine = Matter.Engine,
@@ -46,14 +44,17 @@ const balls = []; // Array to store all balls
 // Function to spawn a bouncy ball at a random position
 function spawnBall() {
     const randomX = Math.random() * 800; // X position between 0 and 800
-
+    const randomPitch = Math.random() * 1000 + 100;
+    const oscillator = audioEngine.startOscillator({ frequency: randomPitch, waveform: "sawtooth", attack: 0.1, decay: 0.2, sustain: 0.7, release: 0.3 });
     // Create a ball with a high restitution (bounciness)
     const ball = Bodies.circle(randomX, 0, 20, {
-        restitution: 0.98 // Value close to 1 for high bounciness
+        restitution: 0.92 // Value close to 1 for high bounciness
     });
     ball.customId = balls.length + 1;    // Add a custom ID to the ball
+    ball.oscillator = oscillator;        // Add the oscillator to the ball
     Composite.add(engine.world, ball);     // Add the ball to the world and the balls array
     balls.push(ball); // Important: Add the ball to the balls array
+    /*create oscillators*/
 }
 
 // Listen for collisions
@@ -69,19 +70,8 @@ Events.on(engine, 'collisionStart', function(event) {
             if ((bodyA === ball && bodyB === ground) || (bodyA === ground && bodyB === ball)) {
                /* console.log('Ball collided with the ground!');*/
                 // trigger event action here for ball collision
-                // if ball id is divisible by 2 then trigger sound
-                if (ball.customId % 2 === 0) {
-                    audioEngine.playSound1();
-                    console.log('ball id is divisible by 2');
-                    console.log(ball.customId);
-                }
-                else {
-                    audioEngine.playSound2();
-                    console.log('ball id is not divisible by 2');
-                    console.log(ball.customId);
+                ball.oscillator.triggerAttackRelease()
 
-
-                }
             }
         });
     });
@@ -97,7 +87,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // Initialise audio engine
         audioEngine.initAudioEngine();
         audioEngine.loadImpulseResponse("impulse-response.wav");
-        audioEngine.startOscillator();
         document.getElementById('spawnButton').addEventListener('click', function() {
             spawnBall();
         });
