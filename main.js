@@ -26,6 +26,7 @@ const render = Render.create({
 
 // Create a ground
 const ground = Bodies.rectangle(400, 610, 810, 60, {isStatic: true});
+ground.restitution = 0.999;
 
 // Add the ground to the world
 Composite.add(engine.world, [ground]);
@@ -45,11 +46,17 @@ const balls = []; // Array to store all balls
 function spawnBall() {
     const randomX = Math.random() * 800; // X position between 0 and 800
     const randomPitch = Math.random() * 1000 + 100;
-    const oscillator = audioEngine.startOscillator({ frequency: randomPitch, waveform: "sawtooth", attack: 0.1, decay: 0.2, sustain: 0.7, release: 0.3 });
+    const oscillator = audioEngine.startOscillator(
+    { frequency: randomPitch, waveform: "sawtooth", attack: 0.05, decay: 0.2, sustain: 0.7, release: 0.5 });
     // Create a ball with a high restitution (bounciness)
     const ball = Bodies.circle(randomX, 0, 20, {
-        restitution: 0.92 // Value close to 1 for high bounciness
+
     });
+    ball.frictionAir = 0.001;
+
+    ball.slop = 0.9;
+    ball.restitution = 0.9;
+    ball.density = 0.5;
     ball.customId = balls.length + 1;    // Add a custom ID to the ball
     ball.oscillator = oscillator;        // Add the oscillator to the ball
     Composite.add(engine.world, ball);     // Add the ball to the world and the balls array

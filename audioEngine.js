@@ -105,12 +105,9 @@ export default class AudioEngine {
                 const now = this.audioContext.currentTime;
                 vca.gain.cancelScheduledValues(now); // Clear any existing scheduled values
                 vca.gain.setValueAtTime(0, now); // Start at 0
-                vca.gain.linearRampToValueAtTime(1, now + 1); // Ramp up to sustain
-                console.log(vca.gain.value);
-                console.log(vca.gain.valueAtTime(now));
-                console.log(vca.gain.valueAtTime(now + this.attack));
-        /*        vca.gain.linearRampToValueAtTime(1, now + this.attack); // Ramp up to 1
-                vca.gain.linearRampToValueAtTime(0, now + this.attack + this.release); // Ramp down to 0*/
+                vca.gain.exponentialRampToValueAtTime(1, now + attack); // Ramp up to full volume*
+                vca.gain.linearRampToValueAtTime(0, now + attack + release); // Ramp down to 0
+
             },
         };
 
