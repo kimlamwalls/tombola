@@ -16,8 +16,8 @@ export default class AudioEngine {
 
         this.oscillatorRunning = false;
 
-        this.ARAttack = 0.2; // seconds
-        this.ARRelease = 0.2; // seconds
+        this.ARAttack = 0.05; // seconds
+        this.ARRelease = 0.05; // seconds
 
         this.ADSRAttack = 0.1; // seconds
         this.ADSRDecay = 0.1; // seconds
@@ -157,9 +157,20 @@ export default class AudioEngine {
         spectrogram.draw();
     }
 
-    bloop(){
+    playSound(){
         this.triggerAttackRelease();
     }
+
+    playSound1(){
+        this.changePitch(220);
+        this.triggerAttackRelease();
+    }
+
+    playSound2(){
+        this.changePitch(440);
+        this.triggerAttackRelease();
+    }
+
 
     toggleVCA(){
         if(this.vcaVolume.gain.value === 0){
