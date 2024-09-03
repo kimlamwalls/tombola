@@ -14,10 +14,14 @@ export default class AudioEngine {
         this.oscillators = []; // Array to store created oscillators
         this.lowPassFilter = null;
 
+
         this.oscillatorRunning = false;
 
         this.ARAttack = 0.05; // seconds
         this.ARRelease = 0.05; // seconds
+
+        this.delayFeedbackGain=0.0;
+
 
         this.ADSRAttack = 0.1; // seconds
         this.ADSRDecay = 0.1; // seconds
@@ -50,14 +54,15 @@ export default class AudioEngine {
     initAudioEngine(){
         this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
         this.masterVolume = this.audioContext.createGain();
-        this.vcaVolume = this.audioContext.createGain();
         this.masterVolume.connect(this.audioContext.destination);
-        this.masterVolume.gain.value = 0.3;
+        this.masterVolume.gain.value = 0.2;
         this.convolver = this.audioContext.createConvolver();
         this.lowPassFilter = this.audioContext.createBiquadFilter();
         this.lowPassFilter.type = 'lowpass';
-        this.lowPassFilter.frequency.value = 1000;
-        this.lowPassFilter.Q.value = 1;
+        this.lowPassFilter.frequency.value = 4000;
+        this.lowPassFilter.Q.value = 0.1;
+        this.delay = this.audioContext.createDelay();
+        this.delay.delayTime.value = 0.4;
     }
 
     createOscillator({
@@ -80,9 +85,19 @@ export default class AudioEngine {
 
         // Connect the oscillator through its own VCA, then through the rest of the audio chain
         oscillator.connect(vca);
+        
         vca.connect(this.lowPassFilter);
+        
+        const feedback = this.audioContext.createGain();
+        this.lowPassFilter.connect(feedback);
+        feedback.connect(this.delay);
+        this.delay.connect(feedback);
+        this.delay.connect(this.convolver);
         this.lowPassFilter.connect(this.convolver);
+        this.delay.connect(this.convolver);
         this.convolver.connect(this.masterVolume);
+        feedback.gain.value = this.delayFeedbackGain;
+        
 
         // Define the custom oscillator with an envelope
         const customOscillator = {

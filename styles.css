@@ -8,9 +8,11 @@ body {
     background-color: rgb(240, 240, 240);
     font-family: 'Roboto', sans-serif;
     font-size: 16px;
+    width: 500px;
+    height: 1000px;
 }
 
 .tombola{
     width: 500px;
-    height: 500px;
+    height: 1000px;
 }

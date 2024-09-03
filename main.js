@@ -1,8 +1,11 @@
 import AudioEngine from "./audioEngine.js";
+import { PitchQuantizer, Note } from "./pitchQuantizer.js";
 
 const audioEngine = new AudioEngine(true);
 
 /*====================================SOUND STUFF====================================*/
+
+const pitchQuantizer = new PitchQuantizer(true);
 
 
 
@@ -19,22 +22,36 @@ const Engine = Matter.Engine,
 // Create an engine
 const engine = Engine.create();
 
-// Create a renderer
+
 const render = Render.create({
     element: document.body,
-    engine: engine
+    engine: engine,
+    options: {
+        width: 400, // Set desired width
+        height: 700 // Set desired height
+    }
 });
 
 // Create a ground
-const ground = Bodies.rectangle(400, 610, 810, 60, {isStatic: true});
+const ground = Bodies.rectangle(200, 690, 400, 60, { isStatic: true });
 
+// Create walls
+const leftWall = Bodies.rectangle(10, 350, 20, 700, { isStatic: true });
+const rightWall = Bodies.rectangle(390, 350, 20, 700, { isStatic: true });
+
+// Angle walls by 5 degrees (convert degrees to radians)
+const angle = 7 * (Math.PI / 180);
+
+// Apply rotation to walls
+Body.setAngle(leftWall, -angle); // Negative angle for left wall to angle outward
+Body.setAngle(rightWall, angle); // Positive angle for right wall to angle outward
 
 // Define vertices for a regular pentagon
 const pentagonVertices = Vertices.fromPath('0 50 47 15 29 -40 -29 -40 -47 15');
 
 const tombolaShapeXY = [200,300]
 const tombolaSides = 5;
-const tombolaRadius = 60;
+const tombolaRadius = 30;
 
 function createPolygon(x, y, sides, radius) {
     // Generate the vertices for a regular polygon
@@ -53,11 +70,11 @@ function createPolygon(x, y, sides, radius) {
 const tombola = createPolygon(tombolaShapeXY[0], tombolaShapeXY[1], tombolaSides, tombolaRadius);
 
 // Create a pentagon body
-const pentagon = Bodies.fromVertices(400, 300, [pentagonVertices], {});
+const pentagon = Bodies.fromVertices(100, 50, [pentagonVertices], {});
 
 // Create a constraint to keep the pentagon anchored at its center
 const constraint = Matter.Constraint.create({
-    pointA: { x: 400, y: 300 }, // Central axis
+    pointA: { x: 100, y: 50 }, // Central axis
     bodyB: tombola,
     pointB: { x: 0, y: 0 }, // Offset within the pentagon (center)
     stiffness: 1 // No flexibility
@@ -70,8 +87,8 @@ function rotateBody(body) {
     body.angle += 0.01; // Add a small angle to the body's angle
     Matter.Body.setAngularVelocity(body, 0.1); // Set angular velocity
 }
-// Add the ground to the world
-Composite.add(engine.world, [ground]);
+// Add the ground and walls to the world
+Composite.add(engine.world, [ground, leftWall, rightWall]);
 
 // Run the renderer
 Render.run(render);
@@ -90,18 +107,18 @@ const balls = []; // Array to store all balls
 
 // Function to spawn a bouncy ball at a random position
 function spawnBall() {
-    const randomX = Math.random() * 800; // X position between 0 and 800
+    const randomX = Math.random() * 400; // X position between 0 and 800
     const randomPitch = Math.random() * 1000 + 100;
+    const quantizedPitch = pitchQuantizer.nearestSemitone(randomPitch).frequency;
     const oscillator = audioEngine.startOscillator(
-    { frequency: randomPitch, waveform: "sawtooth", attack: 0.05, decay: 0.2, sustain: 0.7, release: 0.5 });
-    // Create a ball with a high restitution (bounciness)
-    const ball = Bodies.circle(300, 100, 10, {
+    { frequency: quantizedPitch, waveform: "sawtooth", attack: 0.05, decay: 0.5, sustain: 0.7, release: 1 });
+    const ball = Bodies.circle(randomX, 100, 8, {
 
     });
-    ball.frictionAir = 0.001;
-    ball.slop = 0.9;
-    ball.restitution = 0.9;
-    ball.density = 0.5;
+    ball.frictionAir = 0.0009;
+    ball.slop = 0.5;
+    ball.restitution = 1.17;
+    ball.density = 1;
     ball.customId = balls.length + 1;    // Add a custom ID to the ball
     ball.oscillator = oscillator;        // Add the oscillator to the ball
     Composite.add(engine.world, ball);     // Add the ball to the world and the balls array
@@ -133,14 +150,13 @@ Events.on(engine, 'collisionStart', function(event) {
 /*=============================UI STUFF===============================*/
 document.addEventListener('DOMContentLoaded', function() {
 
-
-
     const startAudioButton = document.getElementById('startAudioButton');
 
     startAudioButton.addEventListener('click', function() {
         // Initialise audio engine
         audioEngine.initAudioEngine();
-        audioEngine.loadImpulseResponse("impulse-response.wav");
+
+        audioEngine.loadImpulseResponse("mediumPlate.wav");
         document.getElementById('spawnButton').addEventListener('click', function() {
             spawnBall();
         });
