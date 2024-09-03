@@ -108,7 +108,7 @@ const balls = []; // Array to store all balls
 // Function to spawn a bouncy ball at a random position
 function spawnBall() {
     const randomX = Math.random() * 400; // X position between 0 and 800
-    const randomPitch = Math.random() * 1000 + 100;
+    const randomPitch = Math.random() * 1200 + 40; // Random pitch between 100 and 1100
     const quantizedPitch = pitchQuantizer.nearestSemitone(randomPitch).frequency;
     const oscillator = audioEngine.startOscillator(
     { frequency: quantizedPitch, waveform: "sawtooth", attack: 0.05, decay: 0.5, sustain: 0.7, release: 1 });

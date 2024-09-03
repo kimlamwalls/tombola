@@ -7,7 +7,7 @@ export class PitchQuantizer {
         this.semitones = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
         this.octaves = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
         this.notes = []; // Array of note objects
-        this.scale = "major"
+        this.scale = "pentatonic" // hard code scale for now
 
 
         // Load and calculate default notes
@@ -39,6 +39,17 @@ export class PitchQuantizer {
             
             this.notes = this.notes.filter(note => !note.letterName.includes("#"));
         }
+        
+        if (scale === "pentatonic") {
+            if (this.debug) console.log("scale set to pentatonic");
+            //remove notes that arent c d e g a
+            this.notes = this.notes.filter(note => !note.letterName.includes("#"));
+            this.notes = this.notes.filter(note => !note.letterName.includes("B"));
+            this.notes = this.notes.filter(note => !note.letterName.includes("F"));
+            
+
+  
+        }   
     }
 
 }
