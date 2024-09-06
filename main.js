@@ -1,5 +1,5 @@
 import AudioEngine from "./audioEngine.js";
-import { PitchQuantizer, Note } from "./pitchQuantizer.js";
+import {PitchQuantizer} from "./pitchQuantizer.js";
 
 const debug = true;
 
@@ -119,7 +119,7 @@ function spawnBall(attack, release, maxPitch, minPitch) {
     const ball = Bodies.circle(randomX, 100, 8, {
         label: "ball",
     });
-    ball.frictionAir = 0.0009;
+    ball.frictionAir = 0.0011;
     ball.slop = 0.5;
     ball.restitution = 1.17;
     ball.density = 1;
@@ -156,8 +156,7 @@ Events.on(engine, 'collisionStart', function(event) {
 /*=============================UI STUFF===============================*/
 document.addEventListener('DOMContentLoaded', function() {
     let autoSpawnIntervalId = null; // Store the interval ID
-    let simulationSpeed = document.getElementById('simulationSpeed').value;
-    engine.timing.timeScale = simulationSpeed;
+    engine.timing.timeScale = document.getElementById('simulationSpeed').value;
 
     // Initialise audio engine
     function initializeAudioEngine() {
@@ -205,17 +204,17 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('attack').addEventListener('sl-change', function() {
         const attackValue = parseFloat(this.value);
         // Loop through balls and change attack for each oscillator
-        for (let i = 0; i < balls.length; i++) {
+ /*       for (let i = 0; i < balls.length; i++) {
             balls[i].oscillator.setAttack(attackValue);
-        }
+        }*/
     });
 
     document.getElementById('release').addEventListener('sl-change', function() {
         const releaseValue = parseFloat(this.value);
         // Loop through balls and change release for each oscillator
-        for (let i = 0; i < balls.length; i++) {
+/*        for (let i = 0; i < balls.length; i++) {
             balls[i].oscillator.setRelease(releaseValue);
-        }
+        }*/
     });
 
     document.getElementById('maxPitch').addEventListener('sl-change', function() {
