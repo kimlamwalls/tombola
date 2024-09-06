@@ -202,7 +202,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     document.getElementById('attack').addEventListener('sl-change', function() {
-        const attackValue = parseFloat(this.value);
+        attack = parseFloat(this.value);
         // Loop through balls and change attack for each oscillator
  /*       for (let i = 0; i < balls.length; i++) {
             balls[i].oscillator.setAttack(attackValue);
@@ -210,7 +210,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     document.getElementById('release').addEventListener('sl-change', function() {
-        const releaseValue = parseFloat(this.value);
+        release = parseFloat(this.value);
         // Loop through balls and change release for each oscillator
 /*        for (let i = 0; i < balls.length; i++) {
             balls[i].oscillator.setRelease(releaseValue);
