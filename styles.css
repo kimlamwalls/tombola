@@ -8,11 +8,32 @@ body {
     background-color: rgb(240, 240, 240);
     font-family: 'Roboto', sans-serif;
     font-size: 16px;
+}
+
+.grid-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* Creates 3 equal columns */
+    gap: 10px; /* Optional: space between items */
+}
+
+.tombola {
     width: 500px;
     height: 1000px;
 }
 
-.tombola{
-    width: 500px;
-    height: 1000px;
+sl-range {
+    margin: 10px 0; /* Adds some space around the range sliders */
+}
+
+
+#controls-container {
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+#controls-container > * {
+    padding-bottom: 0.6rem;
 }

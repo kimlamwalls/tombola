@@ -13,9 +13,7 @@ export default class AudioEngine {
         this.convolver = null;
         this.oscillators = []; // Array to store created oscillators
         this.lowPassFilter = null;
-
-
-        this.oscillatorRunning = false;
+        this.isInitialised = false;
 
         this.ARAttack = 0.05; // seconds
         this.ARRelease = 0.05; // seconds
@@ -63,41 +61,37 @@ export default class AudioEngine {
         this.lowPassFilter.Q.value = 0.1;
         this.delay = this.audioContext.createDelay();
         this.delay.delayTime.value = 0.4;
+        this.isInitialised = true;
+
+        //start a test oscillator
+        this.lowPassFilter.connect(this.convolver);
+        this.convolver.connect(this.masterVolume);
     }
 
-    createOscillator({
+    createOscillatorVoice({ //default values and expected parameters
                          frequency = 220,
-                         waveform = "sine",
+                         waveform = "sawtooth",
                          attack = 0.1,
                          decay = 0.2,
                          sustain = 0.7,
                          release = 0.3
                      } = {}) {
-        const oscillator = this.audioContext.createOscillator();
-        const vca = this.audioContext.createGain(); // Unique VCA for this oscillator
         const now = this.audioContext.currentTime;
+        const oscillator = this.audioContext.createOscillator(); //create oscillator
 
-        oscillator.type = waveform;
-        oscillator.frequency.setValueAtTime(frequency, now);
+        oscillator.type = waveform; //set waveform
+        oscillator.start(now); //start oscillator
+        oscillator.frequency.setValueAtTime(frequency, now); //set frequency
+        const vca = this.audioContext.createGain(); // Unique VCA for this oscillator
+        oscillator.connect(vca);
+        vca.connect(this.lowPassFilter);
 
         // Start the gain at 0 (silence)
         vca.gain.setValueAtTime(0, now);
 
         // Connect the oscillator through its own VCA, then through the rest of the audio chain
         oscillator.connect(vca);
-        
         vca.connect(this.lowPassFilter);
-        
-        const feedback = this.audioContext.createGain();
-        this.lowPassFilter.connect(feedback);
-        feedback.connect(this.delay);
-        this.delay.connect(feedback);
-        this.delay.connect(this.convolver);
-        this.lowPassFilter.connect(this.convolver);
-        this.delay.connect(this.convolver);
-        this.convolver.connect(this.masterVolume);
-        feedback.gain.value = this.delayFeedbackGain;
-        
 
         // Define the custom oscillator with an envelope
         const customOscillator = {
@@ -116,14 +110,18 @@ export default class AudioEngine {
             setFrequency: (freq) => oscillator.frequency.setValueAtTime(freq, this.audioContext.currentTime),
             setGain: (value) => vca.gain.setValueAtTime(value, this.audioContext.currentTime),
             setWaveform: (waveform) => oscillator.type = waveform,
+            setAttack: (value) => attack = value,
+            setRelease: (value) => release = value,
             triggerAttackRelease: () => {
                 const now = this.audioContext.currentTime;
                 vca.gain.cancelScheduledValues(now); // Clear any existing scheduled values
-                vca.gain.setValueAtTime(0, now); // Start at 0
-                vca.gain.exponentialRampToValueAtTime(1, now + attack); // Ramp up to full volume*
-                vca.gain.linearRampToValueAtTime(0, now + attack + release); // Ramp down to 0
-
+                vca.gain.setValueAtTime(0.0001, now); // Start at 0
+                if (attack > 0.1){vca.gain.linearRampToValueAtTime(1, now + attack);}
+                else{vca.gain.exponentialRampToValueAtTime(1, now + attack);}
+                vca.gain.exponentialRampToValueAtTime(0.0001, now + attack + release); // Ramp down to 0
             },
+
+
         };
 
         this.oscillators.push(customOscillator);
@@ -143,6 +141,9 @@ export default class AudioEngine {
         if (this.debug) console.log(`Started oscillator with frequency ${frequency} and waveform ${waveform}`);
         return osc;
     }
+
+    // Function to apply a slightly exponential ramp
+
 
     stopOscillator(oscillator) {
         oscillator.stop(0);

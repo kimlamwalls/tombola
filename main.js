@@ -1,13 +1,17 @@
 import AudioEngine from "./audioEngine.js";
 import { PitchQuantizer, Note } from "./pitchQuantizer.js";
 
+const debug = true;
+
 const audioEngine = new AudioEngine(true);
 
 /*====================================SOUND STUFF====================================*/
 
 const pitchQuantizer = new PitchQuantizer(true);
-
-
+let maxPitch = 600;
+let minPitch = 50;
+let attack = 0.05;
+let release = 0.05;
 
 /*=============================TOMBOLA STUFF===============================*/
 const Engine = Matter.Engine,
@@ -24,7 +28,7 @@ const engine = Engine.create();
 
 
 const render = Render.create({
-    element: document.body,
+    element: document.getElementById('canvas'),
     engine: engine,
     options: {
         width: 400, // Set desired width
@@ -103,17 +107,17 @@ console.log(pentagon);
 setInterval(() => rotateBody(pentagon), 1000);
 
 
-const balls = []; // Array to store all balls
+let balls = []; // Array to store all balls
 
 // Function to spawn a bouncy ball at a random position
-function spawnBall() {
+function spawnBall(attack, release, maxPitch, minPitch) {
     const randomX = Math.random() * 400; // X position between 0 and 800
-    const randomPitch = Math.random() * 1200 + 0; // Random pitch between 100 and 1100
+    const randomPitch = Math.random() * (maxPitch - minPitch) + minPitch; // Random pitch between min and max
     const quantizedPitch = pitchQuantizer.nearestSemitone(randomPitch).frequency;
-    const oscillator = audioEngine.startOscillator(
-    { frequency: quantizedPitch, waveform: "sawtooth", attack: 0.05, decay: 0.5, sustain: 0.7, release: 1 });
+    const oscillator = audioEngine.createOscillatorVoice(
+    { frequency: quantizedPitch, waveform: "sawtooth", attack: attack, decay: 0.5, sustain: 0.7, release: release });
     const ball = Bodies.circle(randomX, 100, 8, {
-
+        label: "ball",
     });
     ball.frictionAir = 0.0009;
     ball.slop = 0.5;
@@ -121,10 +125,13 @@ function spawnBall() {
     ball.density = 1;
     ball.customId = balls.length + 1;    // Add a custom ID to the ball
     ball.oscillator = oscillator;        // Add the oscillator to the ball
+    ball.isBall = true;                  // Add a flag to the ball
     Composite.add(engine.world, ball);     // Add the ball to the world and the balls array
     balls.push(ball); // Important: Add the ball to the balls array
-    /*create oscillators*/
+    if (debug) console.log("spawnBall called with attack: " + attack + " and release: " + release + " and maxPitch: " + maxPitch + " and minPitch: " + minPitch);
+    if (debug) console.log("Ball created with pitch: " + quantizedPitch);
 }
+
 
 // Listen for collisions
 Events.on(engine, 'collisionStart', function(event) {
@@ -140,7 +147,6 @@ Events.on(engine, 'collisionStart', function(event) {
                /* console.log('Ball collided with the ground!');*/
                 // trigger event action here for ball collision
                 ball.oscillator.triggerAttackRelease()
-
             }
         });
     });
@@ -149,16 +155,105 @@ Events.on(engine, 'collisionStart', function(event) {
 
 /*=============================UI STUFF===============================*/
 document.addEventListener('DOMContentLoaded', function() {
+    let autoSpawnIntervalId = null; // Store the interval ID
+    let simulationSpeed = document.getElementById('simulationSpeed').value;
+    engine.timing.timeScale = simulationSpeed;
 
-    const startAudioButton = document.getElementById('startAudioButton');
+    // Initialise audio engine
+    function initializeAudioEngine() {
+        if (!audioEngine.isInitialised) {
+            audioEngine.initAudioEngine();
+            audioEngine.loadImpulseResponse("mediumPlate.wav");
+        }
+    }
 
-    startAudioButton.addEventListener('click', function() {
-        // Initialise audio engine
-        audioEngine.initAudioEngine();
+    // Spawn Ball
+    function spawnBallHandler() {
+        const attack = parseFloat(document.getElementById('attack').value);
+        const release = parseFloat(document.getElementById('release').value);
+        spawnBall(attack, release, maxPitch, minPitch);
+    }
 
-        audioEngine.loadImpulseResponse("mediumPlate.wav");
-        document.getElementById('spawnButton').addEventListener('click', function() {
-            spawnBall();
-        });
+    document.getElementById('spawnButton').addEventListener('click', function() {
+        initializeAudioEngine();
+        spawnBallHandler();
     });
+
+    document.getElementById('autoSpawnToggle').addEventListener('sl-change', function() {
+        if (this.checked) {
+            initializeAudioEngine();
+            const interval = parseInt(document.getElementById('autoSpawnTimer').value, 10);
+            // Clear any existing interval
+            if (autoSpawnIntervalId !== null) {
+                clearInterval(autoSpawnIntervalId);
+            }
+            // Start a new interval
+            autoSpawnIntervalId = setInterval(spawnBallHandler, interval);
+        } else {
+            // Clear the interval
+            if (autoSpawnIntervalId !== null) {
+                clearInterval(autoSpawnIntervalId);
+                autoSpawnIntervalId = null;
+            }
+        }
+    });
+
+    document.getElementById('simulationSpeed').addEventListener('sl-change', function() {
+        engine.timing.timeScale = parseFloat(this.value);
+    });
+
+    document.getElementById('attack').addEventListener('sl-change', function() {
+        const attackValue = parseFloat(this.value);
+        // Loop through balls and change attack for each oscillator
+        for (let i = 0; i < balls.length; i++) {
+            balls[i].oscillator.setAttack(attackValue);
+        }
+    });
+
+    document.getElementById('release').addEventListener('sl-change', function() {
+        const releaseValue = parseFloat(this.value);
+        // Loop through balls and change release for each oscillator
+        for (let i = 0; i < balls.length; i++) {
+            balls[i].oscillator.setRelease(releaseValue);
+        }
+    });
+
+    document.getElementById('maxPitch').addEventListener('sl-change', function() {
+        maxPitch = parseFloat(this.value);
+    });
+
+    document.getElementById('minPitch').addEventListener('sl-change', function() {
+        minPitch = parseFloat(this.value);
+    });
+
+    document.getElementById('bounciness').addEventListener('sl-change', function() {
+        const bouncinessValue = parseFloat(this.value);
+        // Loop through balls and change bounciness for each oscillator
+        for (let i = 0; i < balls.length; i++) {
+            balls[i].restitution = bouncinessValue;
+        }
+    });
+
+    document.getElementById('clearBallsButton').addEventListener('click', function() {
+        // Iterate over the balls array
+        const ballsInWorld = Composite.allBodies(engine.world).filter(body => body.label === 'ball');
+
+// Log the found balls
+        console.log(ballsInWorld);
+
+        // Iterate over the ballsInWorld array
+        for (let i = 0; i < ballsInWorld.length; i++) {
+            // Remove the ball from the world
+            Composite.remove(engine.world, ballsInWorld[i]);
+            // Remove the ball from the balls array
+            balls = balls.filter(ball => ball !== ballsInWorld[i]);
+        }
+
+
+        // Clear the balls array
+        balls = [];
+    });
+
+
 });
+

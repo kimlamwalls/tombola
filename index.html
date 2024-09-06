@@ -4,18 +4,37 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sploop Tombola</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.16.0/cdn/themes/light.css" />
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.16.0/cdn/shoelace-autoloader.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <!-- Button to spawn balls -->
-    <button id="spawnButton">Spawn Ball</button>
-    <button id="startAudioButton">Start Audio</button>
-    <p id="test">first press start audio<br>
-        then press spawn ball a few times </p>
+<div class="grid-container">
 
+    <div id="canvas"></div>
+    <!-- Button to spawn balls -->
+    <div id="controls-container">
+        <sl-button variant="success" id="spawnButton" outline>Spawn Ball</sl-button>
+        <sl-switch id="autoSpawnToggle" size="medium">Auto Spawner toggle</sl-switch>
+        <sl-range id="autoSpawnTimer" label="Auto Spawn" help-text="Spawn a ball automatically every x milliseconds" min="1000" max="5000" value="2500"></sl-range>
+        <!--simulation speed slider-->
+        <sl-range id="simulationSpeed" label="Simulation Speed" help-text="Adjust the speed of the simulation" min="0.05" max="2" value="0.55" step="0.1"></sl-range>
+        <!--attack slider-->
+        <sl-range id="attack" label="Attack" help-text="Adjust the attack of new balls" min="0.01" max="2" value="0.2" step="0.01"></sl-range>
+        <!--release slider-->
+        <sl-range id="release" label="Release" help-text="Adjust the release of new balls" min="0.01" max="2" value="0.2" step="0.01"></sl-range>
+        <!--max pitch range -->
+        <sl-range id="maxPitch" label="Max Pitch" help-text="Adjust the maximum pitch of the new balls" min="30" max="2000" value="600" step="100"></sl-range>
+        <!--min pitch range -->
+        <sl-range id="minPitch" label="Min Pitch" help-text="Adjust the minimum pitch of the new balls" min="20" max="2000" value="50" step="100"></sl-range>
+        <!--bounciness slider-->
+        <sl-range id="bounciness" label="Bounciness" help-text="Adjust the bounciness of all the balls" min="0.9" max="1.5" value="1.17" step="0.01"></sl-range>
+        <!--clear balls button-->
+        <sl-button variant="danger" id="clearBallsButton" outline>Clear Balls</sl-button>
+    </div>
+</div>
 </body>
 <!-- Include Matter.js and your custom script -->
 <script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js"></script>
-<!--load tombola module-->
 <script type="module" src="main.js"></script>
 </html>
