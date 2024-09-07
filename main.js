@@ -25,7 +25,14 @@ const Engine = Matter.Engine,
 
 // Create an engine
 const engine = Engine.create();
+engine.positionIterations = 10;
+engine.velocityIterations = 10;
+engine.constraitIterations = 4;
+engine.timing.timeScale = 0.50;
 
+//ball parameters
+let ball1Gravity = 0.0003;
+let ball2Gravity = 0.00006;
 
 const render = Render.create({
     element: document.getElementById('canvas'),
@@ -53,7 +60,7 @@ Body.setAngle(rightWall, angle); // Positive angle for right wall to angle outwa
 // Define vertices for a regular pentagon
 const pentagonVertices = Vertices.fromPath('0 50 47 15 29 -40 -29 -40 -47 15');
 
-const tombolaShapeXY = [200,300]
+const tombolaShapeXY = [100,180]
 const tombolaSides = 5;
 const tombolaRadius = 30;
 
@@ -66,7 +73,6 @@ function createPolygon(x, y, sides, radius) {
         const vertexY = y + radius * Math.sin(i * angle);
         vertices.push({ x: vertexX, y: vertexY });
     }
-
     // Create a Matter.js body from the vertices
     return Matter.Bodies.fromVertices(x, y, vertices);
 }
@@ -78,7 +84,7 @@ const pentagon = Bodies.fromVertices(100, 50, [pentagonVertices], {});
 
 // Create a constraint to keep the pentagon anchored at its center
 const constraint = Matter.Constraint.create({
-    pointA: { x: 100, y: 50 }, // Central axis
+    pointA: { x: 150, y: 50 }, // Central axis
     bodyB: tombola,
     pointB: { x: 0, y: 0 }, // Offset within the pentagon (center)
     stiffness: 1 // No flexibility
@@ -109,8 +115,21 @@ setInterval(() => rotateBody(pentagon), 1000);
 
 let balls = []; // Array to store all balls
 
+function setGravity(body, variant) {
+    let gravityForce = 0.0005;
+    if (variant === 1) {
+        gravityForce = ball1Gravity;
+    }
+    else if (variant === 2) {
+        gravityForce = ball2Gravity;
+    }
+    Matter.Events.on(engine, 'beforeUpdate', function(event) {
+    Matter.Body.applyForce(body, body.position, { x: 0, y: gravityForce });
+    });
+}
+
 // Function to spawn a bouncy ball at a random position
-function spawnBall(attack, release, maxPitch, minPitch) {
+function spawnBall(attack, release, maxPitch, minPitch, variant) {
     const randomX = Math.random() * 400; // X position between 0 and 800
     const randomPitch = Math.random() * (maxPitch - minPitch) + minPitch; // Random pitch between min and max
     const quantizedPitch = pitchQuantizer.nearestSemitone(randomPitch).frequency;
@@ -119,13 +138,16 @@ function spawnBall(attack, release, maxPitch, minPitch) {
     const ball = Bodies.circle(randomX, 100, 8, {
         label: "ball",
     });
+    ball.variant = variant;
     ball.frictionAir = 0.0011;
-    ball.slop = 0.5;
+    ball.slop = 0.2;
     ball.restitution = 1.17;
     ball.density = 1;
     ball.customId = balls.length + 1;    // Add a custom ID to the ball
     ball.oscillator = oscillator;        // Add the oscillator to the ball
     ball.isBall = true;                  // Add a flag to the ball
+    ball.sleepThreshold = 80;
+    setGravity(ball, variant);
     Composite.add(engine.world, ball);     // Add the ball to the world and the balls array
     balls.push(ball); // Important: Add the ball to the balls array
     if (debug) console.log("spawnBall called with attack: " + attack + " and release: " + release + " and maxPitch: " + maxPitch + " and minPitch: " + minPitch);
@@ -153,10 +175,48 @@ Events.on(engine, 'collisionStart', function(event) {
 });
 
 
+function checkBodiesAreSame(balls, worldBodies) {
+    for (let i = 0; i < balls.length; i++) {
+        let ball = balls[i];
+        let isSame = false;
+
+        // Iterate through the bodies in the world
+        for (let j = 0; j < worldBodies.length; j++) {
+            if (ball === worldBodies[j]) {
+                isSame = true;
+                break;
+            }
+        }
+
+        // Log the result for each ball
+        console.log(`Ball ${i} is ${isSame ? '' : 'not '}the same as a world body.`);
+    }
+}
+
+// Example usage:
+let worldBodies = Matter.Composite.allBodies(engine.world);
+checkBodiesAreSame(balls, worldBodies);
+
+
+function refreshBallGravity(gravityForce, selectedVariant) {
+    // Loop through balls array and apply gravity according to the selected variant
+    console.log("refreshBallGravity called");
+    for (let i = 0; i < balls.length; i++) {
+        console.log("balls[i].variant: " + balls[i].variant);
+        console.log("selectedVariant: " + selectedVariant);
+        if (balls[i].variant === selectedVariant) {
+                Matter.Events.on(engine, 'beforeUpdate', function(event) {
+                Matter.Body.applyForce(balls[i], balls[i].position, { x: 0, y: gravityForce });
+            });
+        }
+    }
+}
+
 /*=============================UI STUFF===============================*/
 document.addEventListener('DOMContentLoaded', function() {
     let autoSpawnIntervalId = null; // Store the interval ID
-    engine.timing.timeScale = document.getElementById('simulationSpeed').value;
+    engine.gravity.y = 0;
+    setGravity(tombola,1);
 
     // Initialise audio engine
     function initializeAudioEngine() {
@@ -166,16 +226,29 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    document.getElementById('debugButton').addEventListener('click', function() {
+/*
+        checkBodiesAreSame(balls, Matter.Composite.allBodies(engine.world));
+*/
+
+
+    });
+
     // Spawn Ball
-    function spawnBallHandler() {
+    function spawnBallHandler(variant) {
         const attack = parseFloat(document.getElementById('attack').value);
         const release = parseFloat(document.getElementById('release').value);
-        spawnBall(attack, release, maxPitch, minPitch);
+        spawnBall(attack, release, maxPitch, minPitch, variant);
     }
 
     document.getElementById('spawnButton').addEventListener('click', function() {
         initializeAudioEngine();
-        spawnBallHandler();
+        spawnBallHandler(1);
+    });
+
+    document.getElementById('spawnButton2').addEventListener('click', function() {
+        initializeAudioEngine();
+        spawnBallHandler(2);
     });
 
     document.getElementById('autoSpawnToggle').addEventListener('sl-change', function() {
@@ -198,6 +271,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     document.getElementById('simulationSpeed').addEventListener('sl-change', function() {
+        if (debug) console.log("simulationSpeed: " + parseFloat(this.value));
         engine.timing.timeScale = parseFloat(this.value);
     });
 
@@ -234,12 +308,8 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     document.getElementById('clearBallsButton').addEventListener('click', function() {
-        // Iterate over the balls array
+        // find all balls in the world
         const ballsInWorld = Composite.allBodies(engine.world).filter(body => body.label === 'ball');
-
-// Log the found balls
-        console.log(ballsInWorld);
-
         // Iterate over the ballsInWorld array
         for (let i = 0; i < ballsInWorld.length; i++) {
             // Remove the ball from the world
@@ -247,10 +317,16 @@ document.addEventListener('DOMContentLoaded', function() {
             // Remove the ball from the balls array
             balls = balls.filter(ball => ball !== ballsInWorld[i]);
         }
-
-
         // Clear the balls array
         balls = [];
+    });
+
+    document.getElementById(('gravity')).addEventListener('sl-change', function() {
+        const gravityValue = parseFloat(this.value);
+        // Loop through balls and change gravity for each oscillator
+        for (let i = 0; i < balls.length; i++) {
+            balls[i].gravity = gravityValue;
+        }
     });
 
 
